@@ -1,9 +1,7 @@
 chrome.commands.onCommand.addListener(async (command) => {
   if (command === "save-jd") {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab.id) return;
-
-    const jobUrl = tab.url || "URL not available";
+    if (!tab?.id) return;
 
     const injectionResults = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
@@ -11,38 +9,47 @@ chrome.commands.onCommand.addListener(async (command) => {
     });
 
     const selectedText = injectionResults[0]?.result;
-
-    if (!selectedText) {
-      console.log("Nothing is highlighted!");
-      return;
-    }
+    if (!selectedText) return;
 
     const formData = new FormData();
     formData.append("raw_text", selectedText);
 
     try {
-      const response = await fetch("http://localhost:8000/api/v1/jd/jd-extract-gemini", {
+      const response = await fetch("http://localhost:8000/api/v1/jd/jd-format-ollama", {
         method: "POST",
         body: formData
       });
 
+      if (!response.ok) throw new Error("Backend error");
+
       const data = await response.json();
-      const formattedText = `Title: ${data.title}\nCompany: ${data.company}\nJob Link: ${jobUrl}\n\nJob Description:\n\n${selectedText}`;
 
-      const safeTitle = (data.title !== "Not Found" ? data.title : "").replace(/[^a-z0-9_]/gi, '_');
-      const safeCompany = (data.company !== "Not Found" ? data.company : "").replace(/[^a-z0-9_]/gi, '_');
+      if (data.status === "success") {
+        let safeName = String(data.filename)
+          .replace(/["']/g, "")
+          .replace(/[\x00-\x1f\x7f-\x9f]/g, "")
+          .trim();
 
-      const base64Content = btoa(unescape(encodeURIComponent(formattedText)));
-      const dataUrl = `data:text/plain;base64,${base64Content}`;
+        const cleanBase64 = data.file_content_b64.replace(/\s/g, '');
 
-      chrome.downloads.download({
-        url: dataUrl,
-        filename: `${safeCompany}_${safeTitle}.txt`,
-        saveAs: false 
-      });
+        chrome.downloads.download({
+          url: `data:text/plain;base64,${cleanBase64}`,
+          filename: safeName,
+          saveAs: false
+        }, (downloadId) => {
+          if (chrome.runtime.lastError) {
+            console.error("Download Error:", chrome.runtime.lastError.message);
+            
+            chrome.downloads.download({
+              url: `data:text/plain;base64,${cleanBase64}`,
+              filename: "job_description.txt"
+            });
+          }
+        });
+      }
 
     } catch (error) {
-      console.error("Failed to connect to backend:", error);
+      console.error("Extension Error:", error);
     }
   }
 });

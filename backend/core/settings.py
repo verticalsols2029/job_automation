@@ -1,10 +1,12 @@
 from pathlib import Path
 from datetime import timedelta
+from api.config import settings
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'django-insecure-0^oj#84@e1$9zu@8zg_+w_^!x$#yugc9ihib%g&zih8naa61q@'
 
-DEBUG = True
+SECRET_KEY = settings.django_secret_key
+DEBUG = settings.debug
+
 ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
@@ -16,12 +18,14 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'ninja_jwt',
     'ninja_extra',
+    'corsheaders',
     'api',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -49,6 +53,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'core.wsgi.application'
 
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_EXPOSE_HEADERS = ['Content-Disposition']
 
 DATABASES = {
     'default': {
