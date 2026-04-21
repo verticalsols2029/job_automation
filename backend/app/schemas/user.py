@@ -120,6 +120,7 @@ class UserFull(User):
     experience: List[Experience] = []
     projects: List[Project] = []
     skills: List[Skill] = []
+    education: List[Education] = []
     preferences: Optional[ApplicationPreferences] = None
 
 
